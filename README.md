@@ -38,16 +38,6 @@ npm run db:seed
 npm run dev
 ```
 
-See [HOW_TO_EXECUTE.md](./HOW_TO_EXECUTE.md) for full setup guide.
-
-## Documentation
-
-- [HOW_TO_EXECUTE.md](./HOW_TO_EXECUTE.md) — Complete setup and deployment guide
-- [THINGS_TO_CARE_ABOUT.md](./THINGS_TO_CARE_ABOUT.md) — Security, performance, and maintenance
-- [APPLICATIONS_REQUIRED.md](./APPLICATIONS_REQUIRED.md) — All required services with setup instructions
-- [ERROR_FIXES.md](./ERROR_FIXES.md) — Common errors and solutions
-- [EVERYTHING_ELSE.md](./EVERYTHING_ELSE.md) — Credentials, extending the app, import system details
-
 ## Import Format
 
 ```

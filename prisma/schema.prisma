@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PLANNING
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  REVIEW
+  DONE
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+}
+
+enum NotificationType {
+  TASK_DUE_TODAY
+  TASK_OVERDUE
+  MILESTONE_APPROACHING
+  PROJECT_DEADLINE_APPROACHING
+  TASK_COMPLETED
+  MILESTONE_COMPLETED
+  PROJECT_COMPLETED
+  GENERAL
+}
+
+enum ActivityAction {
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  PROJECT_COMPLETED
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_DELETED
+  TASK_COMPLETED
+  MILESTONE_CREATED
+  MILESTONE_UPDATED
+  MILESTONE_DELETED
+  MILESTONE_COMPLETED
+  NOTE_CREATED
+  NOTE_UPDATED
+  NOTE_DELETED
+  IMPORT_COMPLETED
+  TEMPLATE_CREATED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects                Project[]
+  tasks                   Task[]
+  milestones              Milestone[]
+  notes                   Note[]
+  notifications           Notification[]
+  activityLogs            ActivityLog[]
+  tags                    Tag[]
+  templates               ProjectTemplate[]
+  notificationPreference  NotificationPreference?
+
+  @@index([clerkId])
+}
+
+model Project {
+  id                   String        @id @default(cuid())
+  userId               String
+  title                String
+  description          String?       @db.Text
+  status               ProjectStatus @default(PLANNING)
+  priority             Priority      @default(MEDIUM)
+  startDate            DateTime?
+  dueDate              DateTime?
+  completionPercentage Float         @default(0)
+  customFields         Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  milestones   Milestone[]
+  notes        Note[]
+  tags         TagsOnProjects[]
+  activityLogs ActivityLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([userId, status])
+}
+
+model Task {
+  id             String     @id @default(cuid())
+  projectId      String
+  userId         String
+  title          String
+  description    String?    @db.Text
+  status         TaskStatus @default(TODO)
+  priority       Priority   @default(MEDIUM)
+  estimatedHours Float?
+  actualHours    Float?
+  dueDate        DateTime?
+  completedDate  DateTime?
+  customFields   Json?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags         TagsOnTasks[]
+  activityLogs ActivityLog[]
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([userId, status])
+}
+
+model Milestone {
+  id                   String          @id @default(cuid())
+  projectId            String
+  userId               String
+  title                String
+  description          String?         @db.Text
+  targetDate           DateTime?
+  status               MilestoneStatus @default(PENDING)
+  completionPercentage Float           @default(0)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityLogs ActivityLog[]
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([targetDate])
+  @@index([userId, status])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityLogs ActivityLog[]
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now())
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects TagsOnProjects[]
+  tasks    TagsOnTasks[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TagsOnProjects {
+  projectId String
+  tagId     String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, tagId])
+}
+
+model TagsOnTasks {
+  taskId String
+  tagId  String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  title      String
+  message    String
+  type       NotificationType
+  read       Boolean          @default(false)
+  entityId   String?
+  entityType String?
+  createdAt  DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  userId      String
+  projectId   String?
+  taskId      String?
+  milestoneId String?
+  noteId      String?
+  action      ActivityAction
+  description String
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task      Task?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  note      Note?      @relation(fields: [noteId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  emailTaskDue         Boolean  @default(true)
+  emailTaskOverdue     Boolean  @default(true)
+  emailMilestone       Boolean  @default(true)
+  emailProjectDeadline Boolean  @default(true)
+  inAppTaskDue         Boolean  @default(true)
+  inAppTaskOverdue     Boolean  @default(true)
+  inAppMilestone       Boolean  @default(true)
+  inAppProjectDeadline Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProjectTemplate {
+  id          String   @id @default(cuid())
+  userId      String?
+  name        String
+  description String?
+  content     Json
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isDefault])
+}
